@@ -53,21 +53,34 @@ compute_transform <- function(x, pre_trained, weighting = 500){
 
   # extract feature frequency from fcm object
   feature_frequency <- x@meta$object$margin
-  feature_frequency <- feature_frequency[intersect(names(feature_frequency), rownames(context_embeddings))]
-  feature_frequency <- feature_frequency[intersect(names(feature_frequency), rownames(pre_trained))] # only use overlap btw pretrained and context embeddings (when pretrained embeddings are not trained on local corpus)
-  if(weighting == 'log') feature_frequency <- feature_frequency[feature_frequency >= 1] # avoid negatives when taking logs
 
-  # apply weighting if given
-  if(is.numeric(weighting)) feature_frequency <- feature_frequency[feature_frequency >= weighting]
+  # Restrict to features that (a) have a named, non-missing frequency and (b) exist
+  # in BOTH the context embeddings and the pre-trained embeddings. Using a single
+  # explicit common-feature set (rather than chained intersect() + name indexing)
+  # avoids NA or unnamed margin entries silently producing out-of-bounds subscripts
+  # when the pre-trained embeddings are not trained on the local corpus (e.g.
+  # off-the-shelf or non-English embeddings). See issue #28.
+  feature_frequency <- feature_frequency[!is.na(feature_frequency) & !is.na(names(feature_frequency))]
+  common_features <- Reduce(intersect, list(names(feature_frequency), rownames(context_embeddings), rownames(pre_trained)))
+  feature_frequency <- feature_frequency[common_features]
 
-  # make sure featuers are in the same order
-  context_embeddings <- context_embeddings[names(feature_frequency),]
-  pre_trained <- pre_trained[names(feature_frequency),]
+  # apply weighting threshold
+  if(identical(weighting, 'log')) feature_frequency <- feature_frequency[feature_frequency >= 1] # avoid negatives when taking logs
+  if(is.numeric(weighting)) feature_frequency <- feature_frequency[feature_frequency >= weighting] # threshold based weighting
+
+  # need at least D features to solve for a D x D transformation matrix; fail with
+  # an informative message rather than a cryptic 'singular'/'subscript' error.
+  if(length(feature_frequency) < ncol(pre_trained))
+    stop("only ", length(feature_frequency), " features overlap between the fcm, the pre-trained embeddings, and the weighting threshold - too few to estimate a ", ncol(pre_trained), "-dimensional transformation matrix. Try a less restrictive 'weighting' (e.g. 'log'), a larger corpus, or check that the fcm and pre-trained embeddings share vocabulary.", call. = FALSE)
+
+  # make sure features are in the same order
+  context_embeddings <- context_embeddings[names(feature_frequency), , drop = FALSE]
+  pre_trained <- pre_trained[names(feature_frequency), , drop = FALSE]
 
   # weighting function
   alpha <- Matrix::Matrix(nrow = nrow(context_embeddings), ncol = nrow(context_embeddings), data=0, sparse=T) # initialize weight matrix to be modified
   if(is.numeric(weighting)) diag(alpha) <- 1 # threshold is applied above, hence can simply multiply by 1
-  if(weighting == 'log') diag(alpha) <- log(feature_frequency) # weight by log of token count
+  if(identical(weighting, 'log')) diag(alpha) <- log(feature_frequency) # weight by log of token count
 
   # solve for transformation matrix (just a weighted regression)
   # following lm, we use qr decomposition, faster and more stable

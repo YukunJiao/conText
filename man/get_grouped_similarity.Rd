@@ -12,7 +12,7 @@ get_grouped_similarity(
   pre_trained,
   transform_matrix,
   group_var,
-  window = window,
+  window = 6L,
   norm = "l2",
   remove_punct = FALSE,
   remove_symbols = FALSE,
@@ -20,7 +20,10 @@ get_grouped_similarity(
   remove_separators = FALSE,
   valuetype = "fixed",
   hard_cut = FALSE,
-  case_insensitive = TRUE
+  case_insensitive = TRUE,
+  bootstrap = FALSE,
+  num_bootstraps = 100,
+  confidence_level = 0.95
 )
 }
 \arguments{
@@ -68,12 +71,24 @@ then context will have \code{window} tokens rather than \code{window} x 2)}
 
 \item{case_insensitive}{(logical) - if \code{TRUE}, ignore case when matching a
 target patter}
+
+\item{bootstrap}{(logical) if TRUE, bootstrap the grouped similarity scores --
+resample contexts with replacement (stratified by \code{group_var}) and re-estimate
+the scores for each sample, to obtain std. errors and confidence intervals.}
+
+\item{num_bootstraps}{(integer) number of bootstraps to use (must be >= 100).}
+
+\item{confidence_level}{(numeric in (0,1)) confidence level e.g. 0.95}
 }
 \value{
 a \code{data.frame} with the following columns:
 \describe{
 \item{\code{group}}{ the grouping variable specified for the analysis}
-\item{\code{val}}{(numeric) cosine similarity scores}
+\item{\code{val}}{(numeric) cosine similarity scores. Average over bootstrapped
+samples if \code{bootstrap = TRUE}.}
+\item{\code{std.error}}{(numeric) (if \code{bootstrap = TRUE}) std. error of \code{val}.}
+\item{\code{lower.ci}}{(numeric) (if \code{bootstrap = TRUE}) lower bound of the confidence interval.}
+\item{\code{upper.ci}}{(numeric) (if \code{bootstrap = TRUE}) upper bound of the confidence interval.}
 }
 }
 \description{

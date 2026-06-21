@@ -11,6 +11,14 @@
 #' @param N (numeric) number of nearest contexts to return
 #' @param as_list (logical) if FALSE all results are combined into a single data.frame
 #' If TRUE, a list of data.frames is returned with one data.frame per embedding
+#' @param group_var (character) optional name of a variable in `contexts_dem`'s
+#' docvars identifying the group each candidate context belongs to. If provided,
+#' the nearest contexts for each target (e.g. each group-specific embedding) are
+#' drawn only from the contexts belonging to that same group, so that a context
+#' from one group is never returned as a nearest context for another group's
+#' embedding. The values of `group_var` must match the rownames of `x` (the
+#' target labels). If NULL (default), all candidate contexts are eligible for
+#' every target.
 #'
 #' @return a `data.frame` or list of data.frames (one for each target)
 #' with the following columns:
@@ -57,7 +65,8 @@ ncs <- function(x,
                 contexts_dem,
                 contexts = NULL,
                 N = 5,
-                as_list = TRUE){
+                as_list = TRUE,
+                group_var = NULL){
 
   # for single numeric vectors
   if(is.null(dim(x)) && length(x) == dim(contexts_dem)[2]) x <- matrix(x, nrow = 1)
@@ -69,15 +78,33 @@ ncs <- function(x,
   if(!is.null(rownames(x))) colnames(cos_sim) <- rownames(x)
   if(is.null(rownames(x))) colnames(cos_sim) <- 'target'
 
+  # capture target (embedding) columns before adding bookkeeping columns
+  target_cols <- colnames(cos_sim)
+
+  # optional: restrict each target's candidate contexts to contexts belonging to
+  # that same group (see issue #12). The group of each candidate context is read
+  # from contexts_dem's docvars and must align row-wise with the similarity matrix.
+  group_lookup <- NULL
+  if(!is.null(group_var)){
+    dv <- contexts_dem@docvars
+    if(is.null(dv) || !(group_var %in% names(dv))) stop("group_var '", group_var, "' not found in contexts_dem docvars.", call. = FALSE)
+    if(nrow(dv) != nrow(cos_sim)) stop("contexts_dem docvars do not align with the similarity matrix.", call. = FALSE)
+    group_lookup <- as.character(dv[[group_var]])
+  }
+
   if(!is.null(contexts)){
     # contexts data.frame
     contexts_df <- data.frame(docid = quanteda::docid(contexts), context = sapply(contexts, function(i) paste(i, collapse = " ")))
 
     # join with contexts
-    cos_sim <- cos_sim %>% dplyr::mutate(docid = rownames(cos_sim)) %>% dplyr::left_join(contexts_df, by = 'docid')
+    cos_sim <- cos_sim %>% dplyr::mutate(docid = rownames(cos_sim))
+    if(!is.null(group_lookup)) cos_sim[['.group']] <- group_lookup
+    cos_sim <- cos_sim %>% dplyr::left_join(contexts_df, by = 'docid')
 
     # reshape data
-    result <- tidyr::pivot_longer(cos_sim, -c(docid, context), names_to = "target") %>%
+    result <- tidyr::pivot_longer(cos_sim, cols = dplyr::all_of(target_cols), names_to = "target")
+    if(!is.null(group_lookup)) result <- result[result[['.group']] == result[['target']], , drop = FALSE]
+    result <- result %>%
       dplyr::group_by(target) %>%
       dplyr::slice_max(order_by = value, n = N) %>%
       dplyr::mutate(rank = 1:dplyr::n()) %>%
@@ -88,9 +115,12 @@ ncs <- function(x,
 
     # add texts ids
     cos_sim <- cos_sim %>% dplyr::mutate(context = rownames(cos_sim))
+    if(!is.null(group_lookup)) cos_sim[['.group']] <- group_lookup
 
     # reshape data
-    result <- tidyr::pivot_longer(cos_sim, -c(context), names_to = "target") %>%
+    result <- tidyr::pivot_longer(cos_sim, cols = dplyr::all_of(target_cols), names_to = "target")
+    if(!is.null(group_lookup)) result <- result[result[['.group']] == result[['target']], , drop = FALSE]
+    result <- result %>%
       dplyr::group_by(target) %>%
       dplyr::slice_max(order_by = value, n = N) %>%
       dplyr::mutate(rank = 1:dplyr::n()) %>%

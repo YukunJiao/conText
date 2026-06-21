@@ -122,8 +122,9 @@ get_ncs <- function(x,
       wvs <- matrix(colMeans(x_dem), ncol = ncol(x_dem))
     }
 
-    # find nearest contexts
-    result <- ncs(x = wvs, contexts_dem = contexts_dem, contexts = x, N = N, as_list = as_list)
+    # find nearest contexts (restrict each group's contexts to its own; see issue #12)
+    result <- ncs(x = wvs, contexts_dem = x_dem, contexts = x_contexts, N = N, as_list = as_list,
+                  group_var = if(!is.null(groups)) "group" else NULL)
 
   }
 
@@ -151,8 +152,9 @@ ncs_bootstrap <- function(x = NULL,
     wvs <- matrix(colMeans(x_sample_dem), ncol = ncol(x_sample_dem))
   }
 
-  # find nearest contexts
-  result <- ncs(x = wvs, contexts_dem = x, contexts = x_contexts, N = Inf, as_list = as_list)
+  # find nearest contexts (restrict each group's contexts to its own; see issue #12)
+  result <- ncs(x = wvs, contexts_dem = x, contexts = x_contexts, N = Inf, as_list = as_list,
+                group_var = if(!is.null(by)) "group" else NULL)
 
   return(result)
 

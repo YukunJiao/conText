@@ -42,10 +42,7 @@ prototypical_context <- function(context, pre_trained, transform = TRUE, transfo
   # embed responses
   embeds_out <- embed_target(context, pre_trained, transform_matrix, transform = transform, aggregate = FALSE, verbose = FALSE)
 
-  # compute similarity matrix
-  embeds_sim_matrix <- text2vec::sim2(embeds_out$target_embedding, embeds_out$target_embedding, method = 'cosine', norm = norm)
-
-  # average across contexts
+  # average similarity of each context to all contexts
   avg_typicality <- text2vec::sim2(embeds_out$target_embedding, embeds_out$target_embedding, method = 'cosine', norm = norm)
   avg_typicality <- Matrix::colMeans(avg_typicality)
   avg_typicality <- dplyr::tibble(doc_id = embeds_out$obs_included, typicality_score = avg_typicality)
@@ -54,6 +51,6 @@ prototypical_context <- function(context, pre_trained, transform = TRUE, transfo
   # match to text
   avg_typicality <- avg_typicality %>% dplyr::mutate(context = context[embeds_out$obs_included]) %>% dplyr::arrange(-typicality_score)
 
-  # output
-  return(avg_typicality[1:N,])
+  # output (head avoids NA padding when fewer than N contexts)
+  return(utils::head(avg_typicality, N))
 }

@@ -142,8 +142,8 @@ get_nns_ratio <- function(x,
 
   # get top N nns (if N is Inf or NULL, use all features)
   nnsdfs <- nns(x = wvs, N = Inf, candidates = candidates, pre_trained = pre_trained, stem = stem, language = language, as_list = TRUE, show_language = FALSE)
-  nnsdf1 <- if(is.null(N)) nnsdfs[[numerator]]$feature else nnsdfs[[numerator]]$feature[1:N]
-  nnsdf2 <- if(is.null(N)) nnsdfs[[denominator]]$feature else nnsdfs[[denominator]]$feature[1:N]
+  nnsdf1 <- if(is.null(N)) nnsdfs[[numerator]]$feature else utils::head(nnsdfs[[numerator]]$feature, N)
+  nnsdf2 <- if(is.null(N)) nnsdfs[[denominator]]$feature else utils::head(nnsdfs[[denominator]]$feature, N)
 
   # get union of top N nns
   union_nns <- union(nnsdf1, nnsdf2)

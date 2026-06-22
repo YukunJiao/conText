@@ -84,7 +84,7 @@ nns_ratio <- function(x, N = 10, numerator = NULL, candidates = character(0), pr
   nnsdf2 <- nns(x = x[2,], N = Inf, candidates = candidates, pre_trained = pre_trained, stem = stem, language = language, as_list = FALSE, show_language = FALSE)
 
   # get union of top N nns (if N is NULL, use all features)
-  if(is.null(N)){union_nns <- union(nnsdf1$feature, nnsdf2$feature)}else{union_nns <- union(nnsdf1$feature[1:N], nnsdf2$feature[1:N])}
+  if(is.null(N)){union_nns <- union(nnsdf1$feature, nnsdf2$feature)}else{union_nns <- union(utils::head(nnsdf1$feature, N), utils::head(nnsdf2$feature, N))}
 
   # compute ratio for union_nns
   nnsdf1 <- nnsdf1 %>% dplyr::filter(feature %in% union_nns) %>% dplyr::arrange(feature)

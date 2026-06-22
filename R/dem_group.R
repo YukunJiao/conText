@@ -43,10 +43,11 @@ dem_group <- function(x, groups = NULL){
 
   # sum over groups
   result <- base::rowsum(as.matrix(x), group = groups)
-  #all.equal(names(groups_count), rownames(result))
 
-  # divide by group count to get average
-  result <- sweep(result, 1, 1/groups_count, '*')
+  # divide by group count to get average. Index groups_count by the result's row
+  # names so the counts align with the summed rows even when `groups` is a factor
+  # with unused levels (table() would otherwise include zero-count levels).
+  result <- sweep(result, 1, 1/as.numeric(groups_count[rownames(result)]), '*')
 
   # create `dem` class object
   result <- build_dem(Class = 'dem',

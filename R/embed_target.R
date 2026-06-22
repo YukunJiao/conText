@@ -39,11 +39,14 @@
 #' pre_trained = cr_glove_subset,
 #' transform = TRUE, transform_matrix = cr_transform,
 #' aggregate = FALSE, verbose = FALSE)
-embed_target <- function(context, pre_trained, transform = TRUE, transform_matrix, aggregate = TRUE, verbose = TRUE){
+embed_target <- function(context, pre_trained, transform = TRUE, transform_matrix = NULL, aggregate = TRUE, verbose = TRUE){
 
   # checks
-  if(!(ncol(pre_trained) == nrow(transform_matrix)))stop("transformation matrix must have the same number of dimensions as the pre-trained embeddings")
   if(!(is.character(context)))stop("context must be a character vector.")
+  if(transform){ # transform_matrix is only needed (and only validated) when transforming
+    if(is.null(transform_matrix)) stop("when transform = TRUE, a transform_matrix must be provided", call. = FALSE)
+    if(!(ncol(pre_trained) == nrow(transform_matrix))) stop("transformation matrix must have the same number of dimensions as the pre-trained embeddings", call. = FALSE)
+  }
 
   # build context term-feature matrix
   context_tfm <- quanteda::dfm(quanteda::tokens(context))

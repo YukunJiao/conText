@@ -28,6 +28,13 @@ N = number of documents (that could be embedded), D = dimensions of pretrained e
 inherits the document variables in \code{x}, the dfm used. These can be accessed calling the attribute: \verb{@docvars}.
 Note, documents with no overlapping features with the pretrained embeddings provided are automatically
 dropped. For a list of the documents that were embedded call the attribute: \verb{@Dimnames$docs}.
+
+Each row is a separate instance (document) in \code{x}. When \code{x} is a corpus of
+contexts built with \code{tokens_context()}, a single source document can contribute
+several rows -- one per occurrence of the target term -- so the row ids
+(\verb{@Dimnames$docs}, inherited from quanteda's context ids, e.g. \code{text1},
+\code{text2}, ...) identify individual instances rather than distinct source
+documents.
 }
 \description{
 Given a document-feature-matrix, for each document,

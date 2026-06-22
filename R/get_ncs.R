@@ -75,11 +75,14 @@ get_ncs <- function(x,
 
   # initial checks
   if(bootstrap && (confidence_level >= 1 || confidence_level<=0)) stop('"confidence_level" must be a numeric value between 0 and 1.', call. = FALSE) # check confidence level is between 0 and 1
-  if(bootstrap && num_bootstraps < 100) warning('num_bootstraps must be at least 100') # check num_bootstraps >= 100
+  if(bootstrap && num_bootstraps < 100) stop('num_bootstraps must be at least 100', call. = FALSE) # check num_bootstraps >= 100
   if(class(x)[1] != "tokens") stop("data must be of class tokens", call. = FALSE)
 
   # add grouping variable to docvars
-  if(!is.null(groups)) quanteda::docvars(x) <- NULL; quanteda::docvars(x, "group") <- groups
+  if(!is.null(groups)){
+    quanteda::docvars(x) <- NULL
+    quanteda::docvars(x, "group") <- groups
+  }
 
   # create document-feature matrix
   x_dfm <- quanteda::dfm(x, tolower = FALSE)
@@ -99,8 +102,8 @@ get_ncs <- function(x,
                           simplify = FALSE)
     result <- do.call(rbind, ncsdf_bs) %>%
       dplyr::group_by(target, context) %>%
-      dplyr::mutate(lower.ci = dplyr::nth(value, round((1-confidence_level)*num_bootstraps), order_by = value),
-                    upper.ci = dplyr::nth(value, round(confidence_level*num_bootstraps), order_by = value)) %>%
+      dplyr::mutate(lower.ci = stats::quantile(value, probs = (1 - confidence_level)/2, names = FALSE),
+                    upper.ci = stats::quantile(value, probs = (1 + confidence_level)/2, names = FALSE)) %>%
       dplyr::summarise(std.error = sd(value),
                        value = mean(value),
                        lower.ci = mean(lower.ci),
@@ -122,8 +125,9 @@ get_ncs <- function(x,
       wvs <- matrix(colMeans(x_dem), ncol = ncol(x_dem))
     }
 
-    # find nearest contexts
-    result <- ncs(x = wvs, contexts_dem = contexts_dem, contexts = x, N = N, as_list = as_list)
+    # find nearest contexts (restrict each group's contexts to its own; see issue #12)
+    result <- ncs(x = wvs, contexts_dem = x_dem, contexts = x_contexts, N = N, as_list = as_list,
+                  group_var = if(!is.null(groups)) "group" else NULL)
 
   }
 
@@ -151,8 +155,9 @@ ncs_bootstrap <- function(x = NULL,
     wvs <- matrix(colMeans(x_sample_dem), ncol = ncol(x_sample_dem))
   }
 
-  # find nearest contexts
-  result <- ncs(x = wvs, contexts_dem = x, contexts = x_contexts, N = Inf, as_list = as_list)
+  # find nearest contexts (restrict each group's contexts to its own; see issue #12)
+  result <- ncs(x = wvs, contexts_dem = x, contexts = x_contexts, N = Inf, as_list = as_list,
+                group_var = if(!is.null(by)) "group" else NULL)
 
   return(result)
 

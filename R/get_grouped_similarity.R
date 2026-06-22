@@ -37,11 +37,20 @@
 #' then context will have `window` tokens rather than `window` x 2)
 #' @param case_insensitive (logical) - if `TRUE`, ignore case when matching a
 #' target patter
+#' @param bootstrap (logical) if TRUE, bootstrap the grouped similarity scores --
+#' resample contexts with replacement (stratified by `group_var`) and re-estimate
+#' the scores for each sample, to obtain std. errors and confidence intervals.
+#' @param num_bootstraps (integer) number of bootstraps to use (must be >= 100).
+#' @param confidence_level (numeric in (0,1)) confidence level e.g. 0.95
 #'
 #' @return a `data.frame` with the following columns:
 #' \describe{
 #'  \item{`group`}{ the grouping variable specified for the analysis}
-#'  \item{`val`}{(numeric) cosine similarity scores}
+#'  \item{`val`}{(numeric) cosine similarity scores. Average over bootstrapped
+#'  samples if `bootstrap = TRUE`.}
+#'  \item{`std.error`}{(numeric) (if `bootstrap = TRUE`) std. error of `val`.}
+#'  \item{`lower.ci`}{(numeric) (if `bootstrap = TRUE`) lower bound of the confidence interval.}
+#'  \item{`upper.ci`}{(numeric) (if `bootstrap = TRUE`) upper bound of the confidence interval.}
 #'  }
 #' @export
 #'
@@ -64,7 +73,7 @@ get_grouped_similarity <- function(x,
                                    pre_trained,
                                    transform_matrix,
                                    group_var,
-                                   window = window,
+                                   window = 6L,
                                    norm = "l2",
                                    remove_punct = FALSE,
                                    remove_symbols = FALSE,
@@ -72,7 +81,14 @@ get_grouped_similarity <- function(x,
                                    remove_separators = FALSE,
                                    valuetype = "fixed",
                                    hard_cut = FALSE,
-                                   case_insensitive = TRUE) {
+                                   case_insensitive = TRUE,
+                                   bootstrap = FALSE,
+                                   num_bootstraps = 100,
+                                   confidence_level = 0.95) {
+
+  # initial checks
+  if(bootstrap && (confidence_level >= 1 || confidence_level <= 0)) stop('"confidence_level" must be a numeric value between 0 and 1.', call. = FALSE)
+  if(bootstrap && num_bootstraps < 100) stop('num_bootstraps must be at least 100', call. = FALSE)
 
   # Tokenize corpus
   toks <- quanteda::tokens(x, remove_punct = remove_punct, remove_symbols = remove_symbols,
@@ -83,73 +99,63 @@ get_grouped_similarity <- function(x,
                                 valuetype = valuetype, window = window,
                                 hard_cut = hard_cut, case_insensitive = case_insensitive)
 
-  # Compute ALC embeddings
+  # Compute ALC embeddings (one per context instance)
   target_dfm <- quanteda::dfm(target_toks)
   target_dem <- dem(x = target_dfm, pre_trained = pre_trained,
                     transform = TRUE, transform_matrix = transform_matrix,
                     verbose = TRUE)
 
-  # Aggregate embeddings over the grouping variable
-  target_dem_grouped <- dem_group(target_dem,
-                                  groups = target_dem@docvars[[group_var]])
+  groups_vec <- target_dem@docvars[[group_var]]
 
-  # Find the intersection of first_vec words with pre_trained embeddings
-  intersect_words = intersect(first_vec, rownames(pre_trained))
-  # Check if any words are missing and print them
-  missing_words = setdiff(first_vec, intersect_words)
-  if (length(missing_words) > 0) {
-    cat("Words in first_vec not found in pre-trained embeddings:", paste(missing_words, collapse=", "), "\n")
-  }
+  if(bootstrap){
+    cat('starting bootstraps \n')
+    bs <- replicate(num_bootstraps, {
+      target_sample_dem <- dem_sample(x = target_dem, size = 1, replace = TRUE, by = groups_vec)
+      grouped <- dem_group(target_sample_dem, groups = target_sample_dem@docvars[[group_var]])
+      compute_grouped_similarity(grouped, first_vec, second_vec, pre_trained, norm, verbose = FALSE)
+    }, simplify = FALSE)
 
-  # Determine if transpose is needed based on the number of intersecting words
-  if (length(intersect_words) > 1) {
-    y_matrix = as.matrix(pre_trained[intersect_words,])
-  } else {
-    # Transpose if only one word or none
-    y_matrix = t(as.matrix(pre_trained[intersect_words,]))
-  }
-    # Cosine similarity for first vector of terms
-  group_first_val <- text2vec::sim2(target_dem_grouped,
-                          y = y_matrix,
-                          method = 'cosine', norm = norm)
-
-  group_first_val <- Matrix::rowMeans(group_first_val)
-  group_first_val <- dplyr::tibble(group = factor(names(group_first_val)),
-                            first_val = unname(group_first_val))
-
-  # Assign group_first_val to result if second_vec is NULL
-  if (is.null(second_vec)) {
-    result <- group_first_val
-  } else {
-    # Find the intersection of first_vec words with pre_trained embeddings
-    intersect_words = intersect(second_vec, rownames(pre_trained))
-    # Check if any words are missing and print them
-    missing_words = setdiff(second_vec, intersect_words)
-    if (length(missing_words) > 0) {
-      cat("Words in first_vec not found in pre-trained embeddings:", paste(missing_words, collapse=", "), "\n")
-    }
-
-    # Determine if transpose is needed based on the number of intersecting words
-    if (length(intersect_words) > 1) {
-      y_matrix = as.matrix(pre_trained[intersect_words,])
-    } else {
-      # Transpose if only one word or none
-      y_matrix = t(as.matrix(pre_trained[intersect_words,]))
-    }
-
-
-    group_sec_val <- text2vec::sim2(target_dem_grouped,
-                          y = y_matrix,
-                          method = 'cosine', norm = norm)
-
-    group_sec_val <- Matrix::rowMeans(group_sec_val)
-    group_sec_val <- dplyr::tibble(group = factor(names(group_sec_val)),
-                            sec_val = unname(group_sec_val))
-
-    result <- dplyr::left_join(group_first_val, group_sec_val, by = "group") %>%
-      dplyr::mutate(val = first_val + (-1)*sec_val) %>%
-      dplyr::select(group, val)
+    result <- do.call(rbind, bs) %>%
+      dplyr::group_by(group) %>%
+      dplyr::mutate(lower.ci = stats::quantile(val, probs = (1 - confidence_level)/2, names = FALSE),
+                    upper.ci = stats::quantile(val, probs = (1 + confidence_level)/2, names = FALSE)) %>%
+      dplyr::summarise(std.error = stats::sd(val),
+                       val = mean(val),
+                       lower.ci = mean(lower.ci),
+                       upper.ci = mean(upper.ci),
+                       .groups = 'drop') %>%
+      dplyr::select(group, val, std.error, lower.ci, upper.ci)
+    cat('done with bootstraps \n')
+  }else{
+    # Aggregate embeddings over the grouping variable
+    target_dem_grouped <- dem_group(target_dem, groups = groups_vec)
+    result <- compute_grouped_similarity(target_dem_grouped, first_vec, second_vec, pre_trained, norm, verbose = TRUE)
   }
 
   return(result)
+}
+
+# sub-functions ---------------------------------------------------------------
+
+# mean cosine similarity of each (grouped) ALC embedding to a vector of features
+grouped_similarity_vec <- function(grouped_dem, vec, pre_trained, norm, label, verbose = TRUE){
+  intersect_words <- intersect(vec, rownames(pre_trained))
+  missing_words <- setdiff(vec, intersect_words)
+  if(verbose && length(missing_words) > 0) cat("Words in ", label, " not found in pre-trained embeddings: ", paste(missing_words, collapse = ", "), "\n", sep = "")
+  if(length(intersect_words) == 0) stop("none of the words in ", label, " are present in the pre-trained embeddings.", call. = FALSE)
+  # transpose when only a single word survives, so sim2 sees a 1 x D matrix
+  y_matrix <- if(length(intersect_words) > 1) as.matrix(pre_trained[intersect_words,]) else t(as.matrix(pre_trained[intersect_words,]))
+  Matrix::rowMeans(text2vec::sim2(grouped_dem, y = y_matrix, method = 'cosine', norm = norm))
+}
+
+# given a grouped dem, compute the (composite) similarity score per group
+compute_grouped_similarity <- function(grouped_dem, first_vec, second_vec, pre_trained, norm, verbose = TRUE){
+  first_val <- grouped_similarity_vec(grouped_dem, first_vec, pre_trained, norm, "first_vec", verbose)
+  if(is.null(second_vec)){
+    val <- first_val
+  }else{
+    sec_val <- grouped_similarity_vec(grouped_dem, second_vec, pre_trained, norm, "second_vec", verbose)
+    val <- first_val - sec_val # aligned by group (same grouped_dem)
+  }
+  dplyr::tibble(group = factor(names(val)), val = unname(val))
 }

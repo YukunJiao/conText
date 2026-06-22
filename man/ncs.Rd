@@ -5,7 +5,7 @@
 \title{Given a set of embeddings and a set of tokenized contexts, find the top N nearest
 contexts.}
 \usage{
-ncs(x, contexts_dem, contexts = NULL, N = 5, as_list = TRUE)
+ncs(x, contexts_dem, contexts = NULL, N = 5, as_list = TRUE, group_var = NULL)
 }
 \arguments{
 \item{x}{a (quanteda) \code{dem-class} or \code{fem-class} object.}
@@ -22,6 +22,15 @@ will be output instead of the text.}
 
 \item{as_list}{(logical) if FALSE all results are combined into a single data.frame
 If TRUE, a list of data.frames is returned with one data.frame per embedding}
+
+\item{group_var}{(character) optional name of a variable in \code{contexts_dem}'s
+docvars identifying the group each candidate context belongs to. If provided,
+the nearest contexts for each target (e.g. each group-specific embedding) are
+drawn only from the contexts belonging to that same group, so that a context
+from one group is never returned as a nearest context for another group's
+embedding. The values of \code{group_var} must match the rownames of \code{x} (the
+target labels). If NULL (default), all candidate contexts are eligible for
+every target.}
 }
 \value{
 a \code{data.frame} or list of data.frames (one for each target)

@@ -31,7 +31,11 @@ conText(
 you can use \code{.} on RHS, e.g.\code{immigrant ~ .}. If you wish to treat the full document as you DV, rather
 than a single target word, use \code{.} on the LHS e.g. \code{. ~ party + gender}. If you wish to use all covariates
 on the RHS use \code{immigrant ~ .}. Any \code{character} or \code{factor} covariates will automatically be converted
-to a set of binary (\code{0/1}s) indicator variables for each group, leaving the first level out of the regression.}
+to a set of binary (\code{0/1}s) indicator variables for each group, leaving the first level out of the regression.
+Interaction effects are supported using the usual formula syntax: \code{*} (e.g. \code{immigrant ~ party*gender}
+expands to \code{party + gender + party:gender}) or \code{:} for an interaction term on its own. Interactions
+between indicator variables are added as products of the corresponding indicator columns
+(e.g. the coefficient \code{party_R:gender_M}).}
 
 \item{data}{a quanteda \code{tokens-class} object with the necessary document variables. Covariates must be
 either binary indicator variables or "transformable" into binary indicator variables. conText will automatically

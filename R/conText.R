@@ -12,6 +12,10 @@
 #' than a single target word, use `.` on the LHS e.g. `. ~ party + gender`. If you wish to use all covariates
 #' on the RHS use `immigrant ~ .`. Any `character` or `factor` covariates will automatically be converted
 #' to a set of binary (`0/1`s) indicator variables for each group, leaving the first level out of the regression.
+#' Interaction effects are supported using the usual formula syntax: `*` (e.g. `immigrant ~ party*gender`
+#' expands to `party + gender + party:gender`) or `:` for an interaction term on its own. Interactions
+#' between indicator variables are added as products of the corresponding indicator columns
+#' (e.g. the coefficient `party_R:gender_M`).
 #' @param data a quanteda `tokens-class` object with the necessary document variables. Covariates must be
 #' either binary indicator variables or "transformable" into binary indicator variables. conText will automatically
 #' transform any non-indicator variables into binary indicator variables (multiple if more than 2 classes),
@@ -116,13 +120,21 @@ conText <- function(formula, data, pre_trained, transform = TRUE, transform_matr
   # COVARIATES
   #----------------------
 
-  # extract covariates names
-  if(formula[[3]] == "."){covariates <- names(docvars)}else{ # follows lm convention, if DV = ., regress on all variables in data
-    covariates <- setdiff(stringr::str_squish(unlist(strsplit(as.character(formula[[3]]), '+', fixed = TRUE))), '') # to allow for phrase DVs
-    covs_not_in_data <- covariates[!(covariates %in% names(docvars))]
+  # extract covariate terms. We use R's own formula machinery so that interaction
+  # terms specified with `*` (e.g. party*gender) or `:` (e.g. party:gender) are
+  # expanded the usual way: party*gender -> party + gender + party:gender.
+  if(identical(formula[[3]], as.name("."))){ # follows lm convention, if RHS = ., regress on all variables in data
+    base_covariates <- names(docvars)
+    interaction_terms <- character(0)
+  }else{
+    base_covariates <- all.vars(formula[[3]]) # the individual variables involved
+    covs_not_in_data <- base_covariates[!(base_covariates %in% names(docvars))]
     if(length(covs_not_in_data) > 0) stop("the following covariates could not be found in the data: ", paste0(covs_not_in_data, collapse = ", "))
+    term_labels <- attr(stats::terms(stats::reformulate(deparse(formula[[3]]))), "term.labels")
+    interaction_terms <- term_labels[grepl(":", term_labels, fixed = TRUE)]
   }
   # select covariates
+  covariates <- base_covariates
   if (!is.null(cluster_variable)) {
     cluster_variable <- as.character(cluster_variable)
     covariates <- c(covariates, cluster_variable)
@@ -137,6 +149,28 @@ conText <- function(formula, data, pre_trained, transform = TRUE, transform_matr
   # see: https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf
   if(length(non_numeric_vars)>0){
     cov_vars <- fastDummies::dummy_cols(cov_vars, select_columns = non_numeric_vars, remove_first_dummy = TRUE, remove_selected_columns = TRUE, ignore_na = TRUE)
+  }
+
+  # build interaction columns as products of the (dummified) component columns.
+  # A factor variable `v` contributes its indicator columns (named `v_level`); a
+  # numeric variable contributes itself. The product of each combination is added
+  # as a new covariate named e.g. `party_R:gender_M`, so it appears as its own
+  # coefficient (and normed estimate) in the regression output.
+  if(length(interaction_terms) > 0){
+    component_columns <- function(v){
+      if(v %in% names(cov_vars)) return(v) # numeric/already-binary column kept as-is
+      hits <- grep(paste0("^", v, "_"), names(cov_vars), value = TRUE) # indicator columns from dummifying
+      if(length(hits) == 0) stop("could not locate columns for interaction component '", v, "'.", call. = FALSE)
+      hits
+    }
+    for(term in interaction_terms){
+      comps <- strsplit(term, ":", fixed = TRUE)[[1]]
+      combos <- expand.grid(lapply(comps, component_columns), stringsAsFactors = FALSE)
+      for(i in seq_len(nrow(combos))){
+        cols_i <- unlist(combos[i, ], use.names = FALSE)
+        cov_vars[[paste(cols_i, collapse = ":")]] <- Reduce(`*`, lapply(cols_i, function(cc) cov_vars[[cc]]))
+      }
+    }
   }
 
   # create new corpus
@@ -270,6 +304,10 @@ run_ols = function(Y = NULL, X = NULL, ids = NULL){
                        se_type="stata",
                        return_vcov=F, weights=weights) %>%
     broom::tidy()
+
+  # interaction column names (e.g. party_R:gender_M) get backtick-quoted by the
+  # formula interface; strip them so coefficient labels match the permutation path.
+  mod_list$term <- gsub("`", "", mod_list$term, fixed = TRUE)
 
   betas = mod_list %>%
     dplyr::select(term,estimate) %>%

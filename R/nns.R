@@ -84,7 +84,7 @@ nns <- function(x, N = 10, candidates = character(0), pre_trained, stem = FALSE,
     candidates_present <- candidates[candidate_check]
 
     # subset pre-trained embeddings to candidates of interest
-    pre_trained <- pre_trained[rownames(pre_trained) %in% candidates_present,]
+    pre_trained <- pre_trained[rownames(pre_trained) %in% candidates_present, , drop = FALSE]
   }
 
   ## compute cosine similarity

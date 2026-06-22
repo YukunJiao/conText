@@ -88,14 +88,14 @@ contrast_nns <- function(x, groups = NULL, pre_trained = NULL, transform = TRUE,
     bs_sim_out1 <- lapply(bootstrap_out, '[[', 'cos_sim1') %>% do.call(rbind,.)
     sim_out1 <- apply(bs_sim_out1, 2, mean)
     stderror_sim_out1 <- apply(bs_sim_out1, 2, sd)
-    ci_sim_out1 <- apply(bs_sim_out1, 2, function(x) x[order(x)])[c(round((1-confidence_level)*num_bootstraps),round(confidence_level*num_bootstraps)),]
+    ci_sim_out1 <- apply(bs_sim_out1, 2, function(x) stats::quantile(x, probs = c((1 - confidence_level)/2, (1 + confidence_level)/2)))
     nns1 <- dplyr::tibble(feature = names(sim_out1), value = unname(sim_out1), std.error = unname(stderror_sim_out1), lower.ci = unname(ci_sim_out1[1,]), upper.ci = unname(ci_sim_out1[2,]))
 
     # sim_out2
     bs_sim_out2 <- lapply(bootstrap_out, '[[', 'cos_sim2') %>% do.call(rbind,.)
     sim_out2 <- apply(bs_sim_out2, 2, mean)
     stderror_sim_out2 <- apply(bs_sim_out2, 2, sd)
-    ci_sim_out2 <- apply(bs_sim_out2, 2, function(x) x[order(x)])[c(round((1-confidence_level)*num_bootstraps),round(confidence_level*num_bootstraps)),]
+    ci_sim_out2 <- apply(bs_sim_out2, 2, function(x) stats::quantile(x, probs = c((1 - confidence_level)/2, (1 + confidence_level)/2)))
     nns2 <- dplyr::tibble(feature = names(sim_out2), value = unname(sim_out2), std.error = unname(stderror_sim_out2), lower.ci = unname(ci_sim_out2[1,]), upper.ci = unname(ci_sim_out2[2,]))
 
     # sim_ratio
@@ -103,7 +103,7 @@ contrast_nns <- function(x, groups = NULL, pre_trained = NULL, transform = TRUE,
     sim_ratio <- apply(bs_sim_ratio, 2, mean)
     dev1 <- abs(sim_ratio - 1)
     stderror_sim_ratio <- apply(bs_sim_ratio, 2, sd)
-    ci_sim_ratio <- apply(bs_sim_ratio, 2, function(x) x[order(x)])[c(round((1-confidence_level)*num_bootstraps),round(confidence_level*num_bootstraps)),]
+    ci_sim_ratio <- apply(bs_sim_ratio, 2, function(x) stats::quantile(x, probs = c((1 - confidence_level)/2, (1 + confidence_level)/2)))
     nns_ratio <- dplyr::tibble(feature = names(sim_ratio), value = unname(sim_ratio), std.error = unname(stderror_sim_ratio), lower.ci = unname(ci_sim_ratio[1,]), upper.ci = unname(ci_sim_ratio[2,]))
     cat('done bootstrapping \n')
 

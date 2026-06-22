@@ -89,7 +89,10 @@ get_cos_sim <- function(x,
   }
 
   # add grouping variable to docvars
-  if(!is.null(groups)) quanteda::docvars(x) <- NULL; quanteda::docvars(x, "group") <- groups
+  if(!is.null(groups)){
+    quanteda::docvars(x) <- NULL
+    quanteda::docvars(x, "group") <- groups
+  }
 
   # create document-feature matrix
   x_dfm <- quanteda::dfm(x, tolower = FALSE)
@@ -111,8 +114,8 @@ get_cos_sim <- function(x,
                           simplify = FALSE)
     result <- do.call(rbind, cossimdf_bs) %>%
       dplyr::group_by(target, feature) %>%
-      dplyr::mutate(lower.ci = dplyr::nth(value, round((1-confidence_level)*num_bootstraps), order_by = value),
-                    upper.ci = dplyr::nth(value, round(confidence_level*num_bootstraps), order_by = value)) %>%
+      dplyr::mutate(lower.ci = stats::quantile(value, probs = (1 - confidence_level)/2, names = FALSE),
+                    upper.ci = stats::quantile(value, probs = (1 + confidence_level)/2, names = FALSE)) %>%
       dplyr::summarise(std.error = sd(value),
                        value = mean(value),
                        lower.ci = mean(lower.ci),

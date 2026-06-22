@@ -48,7 +48,7 @@ feature_sim <- function(x, y, features = character(0)){
   # check if features are defined
   if(length(features) > 0){
     missing_features <- setdiff(features, overlapping_features)
-    if(length(missing_features)!=0) for(i in 1:length(missing_features)) cat("the following features are not part of the overlapping feature set: ", paste0(missing_features, collapse = ", "))
+    if(length(missing_features) != 0) message("the following features are not part of the overlapping feature set: ", paste0(missing_features, collapse = ", "))
     overlapping_features <- intersect(features, overlapping_features)
     }
 
@@ -56,8 +56,8 @@ feature_sim <- function(x, y, features = character(0)){
   if(length(overlapping_features) == 0) stop("no overlapping features")
 
   # subset to overlapping features
-  x <- x[overlapping_features,]
-  y <- y[overlapping_features,]
+  x <- x[overlapping_features, , drop = FALSE]
+  y <- y[overlapping_features, , drop = FALSE]
 
   # compute rowwise similarity
   row_sim <- text2vec::psim2(x, y, method = "cosine", norm = "l2")

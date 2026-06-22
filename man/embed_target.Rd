@@ -8,7 +8,7 @@ embed_target(
   context,
   pre_trained,
   transform = TRUE,
-  transform_matrix,
+  transform_matrix = NULL,
   aggregate = TRUE,
   verbose = TRUE
 )

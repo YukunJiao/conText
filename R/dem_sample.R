@@ -97,7 +97,7 @@ dem_sample <- function(x, size = NULL, replace = FALSE, weight = NULL, by = NULL
 
   # create `dem` class object
   result <- build_dem(Class = 'dem',
-                      x_dem = x[sample_docs,],
+                      x_dem = x[sample_docs, , drop = FALSE],
                       docvars = x@docvars[sample_docs,,drop=FALSE],
                       features = x@features,
                       Dimnames = list(

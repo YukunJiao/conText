@@ -19,6 +19,11 @@
 #' @param confidence_level (numeric in (0,1)) confidence level e.g. 0.95
 #' @param permute (logical) if TRUE, compute empirical p-values using permutation test
 #' @param num_permutations (numeric) number of permutations to use.
+#' @param p.adjust.method (character) method for adjusting the permutation p-values
+#' for multiple comparisons across the candidate features, passed to
+#' [stats::p.adjust()] (e.g. `"BH"`, `"holm"`, `"bonferroni"`). Defaults to `"none"`
+#' (no adjustment). When not `"none"`, an additional `p.value.adjusted` column is
+#' returned alongside the raw `p.value`.
 #' @param stem (logical) - whether to stem candidates when evaluating nns. Default is FALSE.
 #' If TRUE, candidate stems are ranked by their average cosine similarity to the target.
 #' We recommend you remove misspelled words from candidate set `candidates` as these can
@@ -38,6 +43,8 @@
 #'  \item{`upper.ci`}{(numeric) (if bootstrap = TRUE) upper bound of the confidence interval.}
 #'  \item{`p.value`}{(numeric) empirical p-value of bootstrapped ratio
 #'  of cosine similarities if permute = TRUE, if FALSE, column is dropped.}
+#'  \item{`p.value.adjusted`}{(numeric) multiple-comparison-adjusted p-value
+#'  (only present if `permute = TRUE` and `p.adjust.method != "none"`).}
 #'  \item{`group`}{(character) group in `groups` for which feature belongs
 #'  to the top N nearest neighbors. If "shared", the feature appeared as
 #'  top nearest neighbor for both groups.}
@@ -93,6 +100,7 @@ get_nns_ratio <- function(x,
                           confidence_level = 0.95,
                           permute = TRUE,
                           num_permutations = 100,
+                          p.adjust.method = "none",
                           stem = FALSE,
                           language = 'porter',
                           verbose = TRUE,
@@ -100,6 +108,7 @@ get_nns_ratio <- function(x,
 
   # initial checks
   if(class(x)[1] != "tokens") stop("data must be of class tokens")
+  p.adjust.method <- match.arg(p.adjust.method, stats::p.adjust.methods)
   if(bootstrap && (confidence_level >= 1 || confidence_level<=0)) stop('"confidence_level" must be a numeric value between 0 and 1.', call. = FALSE) # check confidence level is between 0 and 1
   if(bootstrap && num_bootstraps < 100) stop('num_bootstraps must be at least 100') # check num_bootstraps >= 100
 
@@ -209,6 +218,8 @@ get_nns_ratio <- function(x,
     dev1_perm <- apply(dev1_perm, 1, function(i) i >= dev1$value)
     p.value <- apply(dev1_perm, 1, function(i) sum(i)/length(i))
     result <- result %>% dplyr::mutate(p.value = p.value)
+    # multiple-comparison correction across the candidate features (raw p.value kept)
+    if(p.adjust.method != "none") result <- result %>% dplyr::mutate(p.value.adjusted = stats::p.adjust(p.value, method = p.adjust.method))
     cat('done with permutations \n')
   }
 

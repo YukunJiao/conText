@@ -19,6 +19,7 @@ get_nns_ratio(
   confidence_level = 0.95,
   permute = TRUE,
   num_permutations = 100,
+  p.adjust.method = "none",
   stem = FALSE,
   language = "porter",
   verbose = TRUE,
@@ -63,6 +64,12 @@ If \code{groups} defined, sampling is automatically stratified.}
 
 \item{num_permutations}{(numeric) number of permutations to use.}
 
+\item{p.adjust.method}{(character) method for adjusting the permutation p-values
+for multiple comparisons across the candidate features, passed to
+\code{\link[stats:p.adjust]{stats::p.adjust()}} (e.g. \code{"BH"}, \code{"holm"}, \code{"bonferroni"}). Defaults to \code{"none"}
+(no adjustment). When not \code{"none"}, an additional \code{p.value.adjusted} column is
+returned alongside the raw \code{p.value}.}
+
 \item{stem}{(logical) - whether to stem candidates when evaluating nns. Default is FALSE.
 If TRUE, candidate stems are ranked by their average cosine similarity to the target.
 We recommend you remove misspelled words from candidate set \code{candidates} as these can
@@ -91,6 +98,8 @@ Column is dropped if bootstrap = FALSE.}
 \item{\code{upper.ci}}{(numeric) (if bootstrap = TRUE) upper bound of the confidence interval.}
 \item{\code{p.value}}{(numeric) empirical p-value of bootstrapped ratio
 of cosine similarities if permute = TRUE, if FALSE, column is dropped.}
+\item{\code{p.value.adjusted}}{(numeric) multiple-comparison-adjusted p-value
+(only present if \code{permute = TRUE} and \code{p.adjust.method != "none"}).}
 \item{\code{group}}{(character) group in \code{groups} for which feature belongs
 to the top N nearest neighbors. If "shared", the feature appeared as
 top nearest neighbor for both groups.}

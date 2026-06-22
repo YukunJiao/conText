@@ -1,3 +1,21 @@
+# conText 3.2.0
+
+## New features
+
+* `get_nns_ratio()` and `contrast_nns()` gained a `p.adjust.method` argument to
+  correct the permutation p-values for multiple comparisons across candidate
+  features (passed to `stats::p.adjust()`, e.g. `"BH"`, `"holm"`). Defaults to
+  `"none"`; when set, an additional `p.value.adjusted` column is returned.
+* New tutorial vignette, "Embedding Regression with conText", covering the
+  end-to-end regression workflow and the `predict()`/`tidy()`/`summary()`/`plot()`
+  methods.
+
+## Bug fixes
+
+* `embed_target()` no longer requires a `transform_matrix` when `transform = FALSE`
+  (the dimension check is now guarded by `transform`).
+* `dem_sample()` keeps a matrix (`drop = FALSE`) when a single row is sampled.
+
 # conText 3.1.0
 
 ## New features

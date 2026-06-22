@@ -14,6 +14,10 @@
 #' @param confidence_level (numeric in (0,1)) confidence level e.g. 0.95
 #' @param permute (logical) - if TRUE, compute empirical p-values using a permutation test
 #' @param num_permutations (numeric) - number of permutations to use
+#' @param p.adjust.method (character) method for adjusting the permutation p-values
+#' for multiple comparisons across the returned features, passed to
+#' [stats::p.adjust()] (e.g. `"BH"`, `"holm"`). Defaults to `"none"`; when not
+#' `"none"`, an additional `p.value.adjusted` column is returned.
 #' @param candidates (character) vector of candidate features for nearest neighbors
 #' @param N (numeric) - nearest neighbors are subset to the union of the N neighbors of each group (if NULL, ratio is computed for all features)
 #'
@@ -25,6 +29,8 @@
 #'  \item{`lower.ci`}{(numeric) (if bootstrap = TRUE) lower bound of the confidence interval.}
 #'  \item{`upper.ci`}{(numeric) (if bootstrap = TRUE) upper bound of the confidence interval.}
 #'  \item{`p.value`}{(numeric) empirical p-value. Column is dropped if permute = FALSE.}
+#'  \item{`p.value.adjusted`}{(numeric) multiple-comparison-adjusted p-value
+#'  (only present if `permute = TRUE` and `p.adjust.method != "none"`).}
 #'  }
 #'
 #' @export
@@ -56,7 +62,9 @@
 #' verbose = FALSE)
 #'
 #' head(party_nns)
-contrast_nns <- function(x, groups = NULL, pre_trained = NULL, transform = TRUE, transform_matrix = NULL, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, permute = TRUE, num_permutations = 100, candidates = NULL, N = 20, verbose = TRUE){
+contrast_nns <- function(x, groups = NULL, pre_trained = NULL, transform = TRUE, transform_matrix = NULL, bootstrap = TRUE, num_bootstraps = 100, confidence_level = 0.95, permute = TRUE, num_permutations = 100, p.adjust.method = "none", candidates = NULL, N = 20, verbose = TRUE){
+
+  p.adjust.method <- match.arg(p.adjust.method, stats::p.adjust.methods)
 
   # checks
   if(bootstrap && (confidence_level >= 1 || confidence_level<=0)) stop('"confidence_level" must be a numeric value between 0 and 1.', call. = FALSE) # check confidence level is between 0 and 1
@@ -181,6 +189,9 @@ contrast_nns <- function(x, groups = NULL, pre_trained = NULL, transform = TRUE,
 
   }
 
+
+  # multiple-comparison correction across the returned features (raw p.value kept)
+  if(permute && p.adjust.method != "none") nns_ratio <- nns_ratio %>% dplyr::mutate(p.value.adjusted = stats::p.adjust(p.value, method = p.adjust.method))
 
   # output
   return(nns_ratio)

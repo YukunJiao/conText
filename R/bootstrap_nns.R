@@ -92,7 +92,7 @@ bootstrap_nns <- function(context = NULL, pre_trained = NULL, transform = TRUE, 
       embeds_out <- embed_target(context = context, pre_trained, transform_matrix, transform = transform, aggregate = TRUE, verbose = FALSE)
 
       # compute similarity
-      if(!is.null(candidates)) cos_sim <- text2vec::sim2(embeds_out$target_embedding, pre_trained[candidates,], method = 'cosine', norm = norm)else{
+      if(length(candidates) > 0) cos_sim <- text2vec::sim2(embeds_out$target_embedding, pre_trained[candidates, , drop = FALSE], method = 'cosine', norm = norm)else{
         cos_sim <- text2vec::sim2(embeds_out$target_embedding, pre_trained, method = 'cosine', norm = norm)
       }
 
@@ -100,8 +100,8 @@ bootstrap_nns <- function(context = NULL, pre_trained = NULL, transform = TRUE, 
 
     }
 
-  # subset if N is not null
-  if(!is.null(N))  nns <- nns[1:N,]
+  # subset if N is not null (head avoids NA padding when fewer than N candidates)
+  if(!is.null(N))  nns <- utils::head(nns, N)
 
   # output
   return(nns)
@@ -150,7 +150,7 @@ compute_similarity <- function(target_embeddings = NULL, pre_trained = NULL, can
   alc_embedding <- matrix(Matrix::colMeans(target_embeddings), nrow = 1)
 
   # cosine similarities
-  if(!is.null(candidates)){cos_sim <- text2vec::sim2(alc_embedding, pre_trained[candidates,], method = 'cosine', norm = norm)}else{
+  if(length(candidates) > 0){cos_sim <- text2vec::sim2(alc_embedding, pre_trained[candidates, , drop = FALSE], method = 'cosine', norm = norm)}else{
     cos_sim <- text2vec::sim2(alc_embedding, pre_trained, method = 'cosine', norm = norm)
   }
 

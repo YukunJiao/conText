@@ -165,8 +165,8 @@ get_nns_ratio <- function(x,
                           simplify = FALSE)
     result <- do.call(rbind, nnsratiodf_bs) %>%
       dplyr::group_by(feature) %>%
-      dplyr::mutate(lower.ci = dplyr::nth(value, round((1-confidence_level)*num_bootstraps), order_by = value),
-                    upper.ci = dplyr::nth(value, round(confidence_level*num_bootstraps), order_by = value)) %>%
+      dplyr::mutate(lower.ci = stats::quantile(value, probs = (1 - confidence_level)/2, names = FALSE),
+                    upper.ci = stats::quantile(value, probs = (1 + confidence_level)/2, names = FALSE)) %>%
       dplyr::summarise(std.error = sd(value),
                        value = mean(value),
                        lower.ci = mean(lower.ci),

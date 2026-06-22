@@ -117,8 +117,8 @@ get_grouped_similarity <- function(x,
 
     result <- do.call(rbind, bs) %>%
       dplyr::group_by(group) %>%
-      dplyr::mutate(lower.ci = dplyr::nth(val, round((1 - confidence_level) * num_bootstraps), order_by = val),
-                    upper.ci = dplyr::nth(val, round(confidence_level * num_bootstraps), order_by = val)) %>%
+      dplyr::mutate(lower.ci = stats::quantile(val, probs = (1 - confidence_level)/2, names = FALSE),
+                    upper.ci = stats::quantile(val, probs = (1 + confidence_level)/2, names = FALSE)) %>%
       dplyr::summarise(std.error = stats::sd(val),
                        val = mean(val),
                        lower.ci = mean(lower.ci),

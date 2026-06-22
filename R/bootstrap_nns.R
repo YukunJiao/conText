@@ -83,7 +83,7 @@ bootstrap_nns <- function(context = NULL, pre_trained = NULL, transform = TRUE, 
     cos_out <- do.call(rbind,bootstrap_out)
     mean_cos <- apply(cos_out, 2, mean)
     stderror_cos <- apply(cos_out, 2, sd)
-    ci_cos <- apply(cos_out, 2, function(x) x[order(x)])[c(round((1-confidence_level)*num_bootstraps),round(confidence_level*num_bootstraps)),]
+    ci_cos <- apply(cos_out, 2, function(x) stats::quantile(x, probs = c((1 - confidence_level)/2, (1 + confidence_level)/2)))
     nns <- dplyr::tibble(feature = names(mean_cos), value = unname(mean_cos), std.error = unname(stderror_cos), lower.ci = unname(ci_cos[1,]), upper.ci = unname(ci_cos[2,])) %>% dplyr::arrange(-value)}else{
 
       # ELSE

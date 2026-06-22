@@ -7,9 +7,9 @@
 conText(
   formula,
   data,
-  pre_trained = NULL,
+  pre_trained,
   transform = TRUE,
-  transform_matrix = NULL,
+  transform_matrix,
   jackknife = TRUE,
   confidence_level = 0.95,
   jackknife_fraction = 1,
@@ -40,11 +40,7 @@ between indicator variables are added as products of the corresponding indicator
 \item{data}{a quanteda \code{tokens-class} object with the necessary document variables. Covariates must be
 either binary indicator variables or "transformable" into binary indicator variables. conText will automatically
 transform any non-indicator variables into binary indicator variables (multiple if more than 2 classes),
-leaving out a "base" category.
-Alternatively, \code{data} may be a precomputed \code{dem-class} object of per-instance embeddings (e.g. built with
-\code{\link[=as_dem]{as_dem()}} from transformer or other externally computed embeddings, with the covariates stored in its
-docvars). In that case the formula left-hand side must be \code{.} (the embeddings are used directly as the
-dependent variable) and \code{pre_trained}/\code{transform_matrix} are not required.}
+leaving out a "base" category.}
 
 \item{pre_trained}{(numeric) a F x D matrix corresponding to pretrained embeddings.
 F = number of features and D = embedding dimensions.

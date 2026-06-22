@@ -20,10 +20,6 @@
 #' either binary indicator variables or "transformable" into binary indicator variables. conText will automatically
 #' transform any non-indicator variables into binary indicator variables (multiple if more than 2 classes),
 #' leaving out a "base" category.
-#' Alternatively, `data` may be a precomputed `dem-class` object of per-instance embeddings (e.g. built with
-#' [as_dem()] from transformer or other externally computed embeddings, with the covariates stored in its
-#' docvars). In that case the formula left-hand side must be `.` (the embeddings are used directly as the
-#' dependent variable) and `pre_trained`/`transform_matrix` are not required.
 #' @inheritParams dem
 #' @param jackknife (logical) if TRUE, use jackknife (leave one out) to estimate standard errors. Implies n resamples.
 #' @param confidence_level (numeric in (0,1)) confidence level e.g. 0.95
@@ -84,15 +80,10 @@
 #' model1@normed_coefficients
 #'
 
-conText <- function(formula, data, pre_trained = NULL, transform = TRUE, transform_matrix = NULL, jackknife=TRUE, confidence_level = 0.95, jackknife_fraction = 1, parallel=FALSE, permute = TRUE, num_permutations = 100, cluster_variable=NULL, window = 6L, valuetype = c("glob", "regex", "fixed"), case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE){
+conText <- function(formula, data, pre_trained, transform = TRUE, transform_matrix, jackknife=TRUE, confidence_level = 0.95, jackknife_fraction = 1, parallel=FALSE, permute = TRUE, num_permutations = 100, cluster_variable=NULL, window = 6L, valuetype = c("glob", "regex", "fixed"), case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE){
   # initial checks
 
-  # data may be a quanteda tokens object (ALC embeddings are computed internally)
-  # or a precomputed dem-class object of per-instance embeddings (e.g. built with
-  # as_dem() from transformer embeddings); in the latter case the formula LHS must
-  # be `.`, as there is no target word to locate.
-  is_dem <- methods::is(data, "dem")
-  if(!is_dem && class(data)[1] != "tokens") stop("data must be of class tokens or dem", call. = FALSE)
+  if(class(data)[1] != "tokens") stop("data must be of class tokens", call. = FALSE)
 
   if(!transform && !is.null(transform_matrix)) warning('Warning: transform = FALSE means transform_matrix argument was ignored. If that was not your intention, use transform = TRUE.', call. = FALSE)
 
@@ -110,18 +101,13 @@ conText <- function(formula, data, pre_trained = NULL, transform = TRUE, transfo
   # extract dependent variable
   target <- as.character(formula[[2]])
 
-  if(is_dem){
-    # precomputed embeddings: use them directly as the dependent variable
-    if(!(length(target) == 1 && target == ".")) stop("when `data` is a dem, the formula left-hand side must be `.` (the supplied embeddings are used directly as the dependent variable).", call. = FALSE)
-    docvars <- data@docvars
-
-  }else if(length(target) == 1 && target == "."){
-    # mirror lm convention: if DV is "." then full text is embedded
+  # mirror lm convention: if DV is "." then full text is embedded, ow find and embed the context around DV
+  if(length(target) == 1 && target == "."){
     toks <- data
     docvars <- quanteda::docvars(toks)
 
   }else{
-    # ow find and embed the context around DV
+
     if(length(target) > 1) target <- target[2:length(target)]
 
     # create a corpus of contexts
@@ -187,23 +173,17 @@ conText <- function(formula, data, pre_trained = NULL, transform = TRUE, transfo
     }
   }
 
-  if(is_dem){
-    # use the supplied embeddings directly; covariates come from the dem's docvars
-    Y <- data
-    X <- cov_vars
-  }else{
-    # create new corpus
-    quanteda::docvars(toks) <- cov_vars
+  # create new corpus
+  quanteda::docvars(toks) <- cov_vars
 
-    # create document-feature matrix
-    toks_dfm <- quanteda::dfm(toks, tolower = FALSE)
-    # embed toks to get dependent variable
-    toks_dem <- dem(x = toks_dfm, pre_trained = pre_trained, transform_matrix = transform_matrix, transform = transform, verbose = verbose)
-    Y <- toks_dem
-    # regressors
-    X <- toks_dem@docvars
-  }
+  # create document-feature matrix
+  toks_dfm <- quanteda::dfm(toks, tolower = FALSE)
+  # embed toks to get dependent variable
+  toks_dem <- dem(x = toks_dfm, pre_trained = pre_trained, transform_matrix = transform_matrix, transform = transform, verbose = verbose)
+  Y <- toks_dem
   if(verbose) cat('total observations included in regression:', nrow(Y), '\n')
+  # regressors
+  X <- toks_dem@docvars
   if (!is.null(cluster_variable)) {
     ids <- X[,which(names(X)==cluster_variable)]
     ids = factor(ids)
@@ -283,7 +263,7 @@ conText <- function(formula, data, pre_trained = NULL, transform = TRUE, transfo
   result <- build_conText(Class = 'conText',
                                     x_conText = beta_coefficients,
                                     normed_coefficients = norm_tibble,
-                                    features = Y@features,
+                                    features = toks_dem@features,
                                     Dimnames = list(
                                       rows = rownames(beta_coefficients),
                                       columns = NULL))

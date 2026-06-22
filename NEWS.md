@@ -5,13 +5,6 @@
 * `conText()` supports interaction terms in the formula, using the usual syntax:
   `*` (e.g. `immigration ~ party*gender` expands to `party + gender + party:gender`)
   or `:` for an interaction on its own (#18).
-* `conText()` accepts a precomputed `dem-class` object of per-instance embeddings
-  as `data` (with `.` on the left-hand side of the formula), making embedding
-  regression usable with embeddings computed outside conText -- e.g. contextual
-  embeddings from a transformer (BERT/RoBERTa/ModernBERT) or decontextualized
-  static embeddings. `pre_trained`/`transform_matrix` are not required in that case.
-* `as_dem()`: wrap an arbitrary N x D embedding matrix (with optional docvars) as a
-  `dem`, for use with `conText()`, `nns()`, `cos_sim()`, etc.
 * `predict()` method for `conText` models: combine the regression coefficients into
   the implied ALC embedding(s) for one or more covariate profiles (interactions are
   auto-filled from their components; continuous covariates are supported). The output

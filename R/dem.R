@@ -26,6 +26,13 @@
 #' Note, documents with no overlapping features with the pretrained embeddings provided are automatically
 #' dropped. For a list of the documents that were embedded call the attribute: `@Dimnames$docs`.
 #'
+#' Each row is a separate instance (document) in `x`. When `x` is a corpus of
+#' contexts built with `tokens_context()`, a single source document can contribute
+#' several rows -- one per occurrence of the target term -- so the row ids
+#' (`@Dimnames$docs`, inherited from quanteda's context ids, e.g. `text1`,
+#' `text2`, ...) identify individual instances rather than distinct source
+#' documents.
+#'
 #' @export
 #' @rdname dem
 #' @keywords dem

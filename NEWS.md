@@ -1,3 +1,13 @@
+# conText 3.2.0
+
+## New features
+
+* `dem_whiten()`: post-process a `dem`'s embeddings to reduce anisotropy --
+  `"all-but-the-top"` (Mu and Viswanath 2018), `"center"`, or `"zscore"`. This
+  improves cosine-similarity and (squared-)norm-based inference, particularly for
+  contextual embeddings (e.g. from a transformer) brought in via `as_dem()` and
+  used with `conText()`.
+
 # conText 3.1.0
 
 ## New features

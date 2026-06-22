@@ -32,6 +32,22 @@ for the corpus and pre-trained embeddings employed.
 Computes a transformation matrix, given a feature-co-occurrence
 matrix and corresponding pre-trained embeddings.
 }
+\details{
+This is the estimator of the 'a la carte' (ALC) transformation matrix
+described in Khodak et al. (2018) and Rodriguez, Spirling and Stewart (2023):
+it is the (frequency-weighted) least-squares solution that best recovers each
+feature's pre-trained embedding from the average of the embeddings of the
+features it co-occurs with. It is therefore the function used to build your own
+transformation matrix instead of relying on a pre-computed one (e.g.
+\code{cr_transform}).
+
+The procedure is language-agnostic: to apply ALC embeddings to another language
+you only need (1) pre-trained embeddings for that language (e.g. GloVe, word2vec
+or fastText vectors) and (2) a corpus in that language from which to build the
+feature-co-occurrence matrix \code{x}. Pass both to \code{compute_transform()} to obtain a
+language-specific transformation matrix. The pre-trained embeddings and the
+co-occurrence matrix should share vocabulary and use the same preprocessing.
+}
 \examples{
 
 \dontrun{

@@ -89,7 +89,10 @@ get_cos_sim <- function(x,
   }
 
   # add grouping variable to docvars
-  if(!is.null(groups)) quanteda::docvars(x) <- NULL; quanteda::docvars(x, "group") <- groups
+  if(!is.null(groups)){
+    quanteda::docvars(x) <- NULL
+    quanteda::docvars(x, "group") <- groups
+  }
 
   # create document-feature matrix
   x_dfm <- quanteda::dfm(x, tolower = FALSE)

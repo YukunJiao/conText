@@ -92,7 +92,10 @@ get_nns <- function(x,
   }
 
   # add grouping variable to docvars
-  if(!is.null(groups)) quanteda::docvars(x) <- NULL; quanteda::docvars(x, "group") <- groups
+  if(!is.null(groups)){
+    quanteda::docvars(x) <- NULL
+    quanteda::docvars(x, "group") <- groups
+  }
 
   # subset candidates to features present in pre-trained embeddings provided
   if(length(candidates) > 0) candidates <- intersect(candidates, rownames(pre_trained))

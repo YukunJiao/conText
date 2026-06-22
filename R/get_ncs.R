@@ -75,11 +75,14 @@ get_ncs <- function(x,
 
   # initial checks
   if(bootstrap && (confidence_level >= 1 || confidence_level<=0)) stop('"confidence_level" must be a numeric value between 0 and 1.', call. = FALSE) # check confidence level is between 0 and 1
-  if(bootstrap && num_bootstraps < 100) warning('num_bootstraps must be at least 100') # check num_bootstraps >= 100
+  if(bootstrap && num_bootstraps < 100) stop('num_bootstraps must be at least 100', call. = FALSE) # check num_bootstraps >= 100
   if(class(x)[1] != "tokens") stop("data must be of class tokens", call. = FALSE)
 
   # add grouping variable to docvars
-  if(!is.null(groups)) quanteda::docvars(x) <- NULL; quanteda::docvars(x, "group") <- groups
+  if(!is.null(groups)){
+    quanteda::docvars(x) <- NULL
+    quanteda::docvars(x, "group") <- groups
+  }
 
   # create document-feature matrix
   x_dfm <- quanteda::dfm(x, tolower = FALSE)

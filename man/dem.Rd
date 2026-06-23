@@ -4,7 +4,15 @@
 \alias{dem}
 \title{Build a document-embedding matrix}
 \usage{
-dem(x, pre_trained, transform = TRUE, transform_matrix, verbose = TRUE)
+dem(
+  x,
+  pre_trained,
+  transform = TRUE,
+  transform_matrix,
+  weighting = "uniform",
+  sif_a = 0.001,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{x}{a quanteda (\code{dfm-class}) document-feature-matrix}
@@ -18,6 +26,14 @@ if FALSE ouput untransformed averaged embeddings.}
 
 \item{transform_matrix}{(numeric) a D x D 'a la carte' transformation matrix.
 D = dimensions of pretrained embeddings.}
+
+\item{weighting}{(character) how to aggregate the context-feature embeddings:
+\code{"uniform"} (default) is the standard ALC average (each context word weighted by
+its count); \code{"sif"} applies smooth inverse-frequency weighting (Arora et al.
+2017), downweighting each context feature \code{f} by \code{sif_a / (sif_a + p(f))} with
+\code{p(f)} its relative frequency in the contexts, before averaging.}
+
+\item{sif_a}{(numeric) the \code{a} constant for \code{weighting = "sif"} (default 1e-3).}
 
 \item{verbose}{(logical) - if TRUE, report the documents that had
 no overlapping features with the pretrained embeddings provided.}

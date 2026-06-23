@@ -21,6 +21,8 @@ conText(
   valuetype = c("glob", "regex", "fixed"),
   case_insensitive = TRUE,
   hard_cut = FALSE,
+  weighting = "uniform",
+  sif_a = 0.001,
   verbose = TRUE
 )
 }
@@ -78,6 +80,14 @@ exact matching. See \link[quanteda]{valuetype} for details.}
 \item{hard_cut}{(logical) - if TRUE then a context must have \code{window} x 2 tokens,
 if FALSE it can have \code{window} x 2 or fewer (e.g. if a doc begins with a target word,
 then context will have \code{window} tokens rather than \code{window} x 2)}
+
+\item{weighting}{(character) how to aggregate the context-feature embeddings:
+\code{"uniform"} (default) is the standard ALC average (each context word weighted by
+its count); \code{"sif"} applies smooth inverse-frequency weighting (Arora et al.
+2017), downweighting each context feature \code{f} by \code{sif_a / (sif_a + p(f))} with
+\code{p(f)} its relative frequency in the contexts, before averaging.}
+
+\item{sif_a}{(numeric) the \code{a} constant for \code{weighting = "sif"} (default 1e-3).}
 
 \item{verbose}{(logical) - if TRUE, report the documents that had
 no overlapping features with the pretrained embeddings provided.}

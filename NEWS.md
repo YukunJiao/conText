@@ -1,3 +1,12 @@
+# conText 3.3.4
+
+## Documentation
+
+* Expanded the "Embedding Regression with conText" vignette: jackknife confidence
+  intervals in `plot()`, a `convergence_diagnostic()` section, discriminant nearest
+  neighbours via `get_nns_ratio()` with multiple-comparison correction, and SIF
+  weighting.
+
 # conText 3.3.3
 
 ## Bug fixes

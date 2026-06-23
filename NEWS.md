@@ -1,3 +1,20 @@
+# conText 3.3.0
+
+## New features
+
+* `convergence_diagnostic()`: for a focal term's per-instance ALC embeddings (a
+  `dem`), measures how the averaged embedding stabilizes as the number of sampled
+  instances grows (cosine similarity of a sub-sample to the full-sample embedding).
+  Useful for judging whether enough instances are available, especially for rare
+  terms.
+* `dem()` (and `conText()`, which threads it through) gained a `weighting` argument:
+  `"uniform"` (default, the standard ALC count-average) or `"sif"` (smooth
+  inverse-frequency weighting, Arora et al. 2017). Opt-in; the default is unchanged.
+
+## Infrastructure
+
+* Added a GitHub Actions workflow that runs `R CMD check` on push and pull request.
+
 # conText 3.2.0
 
 ## New features

@@ -3,10 +3,13 @@ Embedding Regression with conText
 
 This tutorial walks through the **embedding regression** workflow in
 **conText** end to end: from a tokenized corpus to a fitted model, to
-reading and visualizing the results, predicting embeddings for covariate
-profiles, and tracing how a term’s usage changes along a continuous
-covariate. It complements the [Quick Start Guide](quickstart.md), which
-focuses on the descriptive (“nearest neighbours”) tools.
+reading and visualizing the results, checking whether you have enough
+data, predicting embeddings for covariate profiles, tracing usage along
+a continuous covariate, and finding the neighbours that most
+discriminate groups. It complements the [Quick Start
+Guide](quickstart.md), which focuses on the descriptive (“nearest
+neighbours”) tools and on building the ingredients (local embeddings and
+the transformation matrix).
 
 We use the small objects bundled with the package – `cr_sample_corpus`,
 `cr_glove_subset` and `cr_transform` – so everything here is
@@ -50,7 +53,7 @@ model <- conText(immigration ~ party + gender,
                  data = toks,
                  pre_trained = cr_glove_subset,
                  transform = TRUE, transform_matrix = cr_transform,
-                 jackknife = FALSE,        # set TRUE to add confidence intervals (slower)
+                 jackknife = TRUE,         # confidence intervals (the jackknife is fast)
                  permute = TRUE, num_permutations = 100,
                  verbose = FALSE)
 ```
@@ -63,7 +66,7 @@ Female).
 # Reading the results
 
 The fitted object is a matrix of coefficients (one row per covariate,
-including the intercept). Three methods make it easy to inspect:
+including the intercept). Three methods make it easy to inspect.
 
 `summary()` prints the model dimensions and the normed-coefficient
 table:
@@ -75,14 +78,15 @@ summary(model)
     ## conText embedding regression
     ##   coefficients (incl. intercept): 3 | embedding dimensions: 300 | features: 488
     ## 
-    ## # A tibble: 2 x 8
+    ## # A tibble: 2 x 11
     ##   coefficient normed.estimate.orig normed.estimate.defl~1 normed.estimate.beta~2
     ##   <chr>                      <dbl>                  <dbl>                  <dbl>
     ## 1 party_R                    10.1                    8.67                   1.47
     ## 2 gender_M                    6.91                   5.15                   1.75
     ## # i abbreviated names: 1: normed.estimate.deflated,
     ## #   2: normed.estimate.beta.error.null
-    ## # i 4 more variables: n <int>, n_obs <int>, covariate_mean <dbl>, p.value <dbl>
+    ## # i 7 more variables: n <int>, n_obs <int>, covariate_mean <dbl>,
+    ## #   std.error <dbl>, lower.ci <dbl>, upper.ci <dbl>, p.value <dbl>
 
 `tidy()` returns that table as a tibble (handy for further manipulation
 or plotting):
@@ -91,25 +95,51 @@ or plotting):
 tidy(model)
 ```
 
-    ## # A tibble: 2 x 8
+    ## # A tibble: 2 x 11
     ##   coefficient normed.estimate.orig normed.estimate.defl~1 normed.estimate.beta~2
     ##   <chr>                      <dbl>                  <dbl>                  <dbl>
     ## 1 party_R                    10.1                    8.67                   1.47
     ## 2 gender_M                    6.91                   5.15                   1.75
     ## # i abbreviated names: 1: normed.estimate.deflated,
     ## #   2: normed.estimate.beta.error.null
-    ## # i 4 more variables: n <int>, n_obs <int>, covariate_mean <dbl>, p.value <dbl>
+    ## # i 7 more variables: n <int>, n_obs <int>, covariate_mean <dbl>,
+    ## #   std.error <dbl>, lower.ci <dbl>, upper.ci <dbl>, p.value <dbl>
 
-`plot()` shows the deflated norm of each coefficient. Coefficients
-significant at the 0.05 level (using the permutation p-values) are
-marked with a `*`; when the model is fit with `jackknife = TRUE`,
-confidence intervals are drawn as well.
+`plot()` shows the deflated norm of each coefficient with its confidence
+interval (from the jackknife). Coefficients significant at the 0.05
+level (using the permutation p-values) are marked with a `*`.
 
 ``` r
 plot(model)
 ```
 
 ![](embedding-regression_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+# Do you have enough instances?
+
+ALC is often used for rare terms, where a natural question is whether
+you have enough instances of the focal term for a stable embedding.
+`convergence_diagnostic()` answers this: it embeds the term from random
+sub-samples of increasing size and measures how close each sub-sample
+embedding is (cosine similarity) to the full-sample embedding. The curve
+flattening towards 1 means the embedding has stabilized.
+
+``` r
+immig_toks <- tokens_context(toks, pattern = "immigration", window = 6L, verbose = FALSE)
+immig_dem <- dem(dfm(immig_toks), pre_trained = cr_glove_subset,
+                 transform = TRUE, transform_matrix = cr_transform, verbose = FALSE)
+
+set.seed(2021L)
+conv <- convergence_diagnostic(immig_dem, n_replicates = 15)
+
+ggplot(conv, aes(n, value)) +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.2) +
+  geom_line() + geom_point() +
+  labs(x = "number of instances", y = "cosine similarity to full-sample embedding") +
+  theme_bw()
+```
+
+![](embedding-regression_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
 # Interaction effects
 
@@ -196,82 +226,89 @@ model_nom <- conText(immigration ~ nominate_dim1,
                      transform = TRUE, transform_matrix = cr_transform,
                      jackknife = FALSE, permute = TRUE, num_permutations = 100,
                      verbose = FALSE)
-```
 
-Predict the ALC embedding at a grid of NOMINATE values, then measure its
-cosine similarity to a few features of interest:
-
-``` r
 grid <- seq(-1, 1, by = 0.2)
 nom_wvs <- predict(model_nom, newdata = data.frame(nominate_dim1 = grid,
                                                    row.names = as.character(grid)))
 
 effects <- cos_sim(nom_wvs, pre_trained = cr_glove_subset,
                    features = c("reform", "enforce"), as_list = FALSE)
-head(effects)
-```
 
-    ##   target feature     value
-    ## 1   -1.0  reform 0.6855243
-    ## 2   -0.8  reform 0.6831449
-    ## 3   -0.6  reform 0.6741428
-    ## 4   -0.4  reform 0.6575746
-    ## 5   -0.2  reform 0.6330861
-    ## 6    0.0  reform 0.6010969
-
-Because `cos_sim()` returns a tidy data frame, plotting the “effect” of
-the covariate is a one-liner:
-
-``` r
 effects %>%
   mutate(nominate = as.numeric(target)) %>%
   ggplot(aes(nominate, value, color = feature)) +
   geom_line() + geom_point() +
-  labs(x = "DW-NOMINATE (dim 1)", y = "cosine similarity to feature",
-       color = NULL) +
+  labs(x = "DW-NOMINATE (dim 1)", y = "cosine similarity to feature", color = NULL) +
   theme_bw()
 ```
 
-![](embedding-regression_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](embedding-regression_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
-# Exploratory tools with uncertainty
+# Discriminant nearest neighbours
 
-Alongside the regression, the `get_*()` wrappers go from a tokenized
-corpus to group-level nearest neighbours / similarities, with bootstrap
-standard errors and confidence intervals. The intervals are standard
-percentile-bootstrap intervals at the requested `confidence_level`
-(e.g. a 95% interval uses the 2.5th and 97.5th percentiles).
+To see which neighbours most *distinguish* two groups, `get_nns_ratio()`
+compares the cosine similarities of each group’s embedding to a set of
+candidate features and returns their ratio, with a permutation p-value
+per feature. Because that p-value is computed for many features at once,
+use `p.adjust.method` to correct for multiple comparisons; an adjusted
+p-value column is then returned alongside the raw one.
 
 ``` r
-immig_toks <- tokens_context(toks, pattern = "immigration", window = 6L, verbose = FALSE)
-
 set.seed(2021L)
-immig_nns <- get_nns(x = immig_toks, N = 5,
-                     groups = docvars(immig_toks, "party"),
-                     candidates = character(0),
-                     pre_trained = cr_glove_subset,
-                     transform = TRUE, transform_matrix = cr_transform,
-                     bootstrap = TRUE, num_bootstraps = 100,
-                     confidence_level = 0.95,
-                     as_list = FALSE)
+immig_party_ratio <- get_nns_ratio(x = immig_toks, N = 5,
+                                   groups = docvars(immig_toks, "party"),
+                                   numerator = "R",
+                                   candidates = immig_dem@features,
+                                   pre_trained = cr_glove_subset,
+                                   transform = TRUE, transform_matrix = cr_transform,
+                                   bootstrap = FALSE,
+                                   permute = TRUE, num_permutations = 100,
+                                   p.adjust.method = "BH",
+                                   verbose = FALSE)
 ```
 
-    ## starting bootstraps 
-    ## done with bootstraps
+    ## NOTE: values refer to the ratio R/D.starting permutations 
+    ## done with permutations
 
 ``` r
-head(immig_nns)
+head(immig_party_ratio)
 ```
 
-    ## # A tibble: 6 x 7
-    ##   target feature        rank value std.error lower.ci upper.ci
-    ##   <fct>  <chr>         <int> <dbl>     <dbl>    <dbl>    <dbl>
-    ## 1 D      immigration       1 0.843   0.0107     0.822    0.865
-    ## 2 D      broken            2 0.675   0.0138     0.647    0.701
-    ## 3 D      comprehensive     3 0.655   0.0141     0.622    0.677
-    ## 4 D      reform            4 0.652   0.0157     0.617    0.676
-    ## 5 D      immigrants        5 0.611   0.0148     0.584    0.638
-    ## 6 R      immigration       1 0.867   0.00927    0.847    0.882
+    ##       feature    value p.value p.value.adjusted  group
+    ## 1     illegal 1.193326    0.00       0.00000000      R
+    ## 2     amnesty 1.190681    0.00       0.00000000      R
+    ## 3        laws 1.183587    0.00       0.00000000      R
+    ## 4 enforcement 1.093526    0.02       0.02571429      R
+    ## 5  immigrants 1.034103    0.24       0.24000000      D
+    ## 6 immigration 1.031344    0.04       0.04500000 shared
+
+# Weighting the context words
+
+By default each context word contributes to the average by its count
+(`weighting = "uniform"`). `dem()` and `conText()` also support
+`weighting = "sif"`, which applies smooth inverse-frequency weighting
+(Arora et al. 2017), downweighting very frequent context words before
+averaging:
+
+``` r
+set.seed(2021L)
+model_sif <- conText(immigration ~ party + gender,
+                     data = toks, pre_trained = cr_glove_subset,
+                     transform = TRUE, transform_matrix = cr_transform,
+                     jackknife = FALSE, permute = FALSE,
+                     weighting = "sif",
+                     verbose = FALSE)
+tidy(model_sif)
+```
+
+    ## # A tibble: 2 x 7
+    ##   coefficient normed.estimate.orig normed.estimate.defl~1 normed.estimate.beta~2
+    ##   <chr>                      <dbl>                  <dbl>                  <dbl>
+    ## 1 party_R                    0.472                  0.304                  0.169
+    ## 2 gender_M                   0.373                  0.162                  0.211
+    ## # i abbreviated names: 1: normed.estimate.deflated,
+    ## #   2: normed.estimate.beta.error.null
+    ## # i 3 more variables: n <int>, n_obs <int>, covariate_mean <dbl>
 
 # Notes on inference and performance
 
@@ -282,13 +319,18 @@ head(immig_nns)
     reported.
 -   **p-values vs. intervals.** `permute = TRUE` gives empirical
     p-values via a permutation test; `jackknife = TRUE` adds standard
-    errors and confidence intervals.
+    errors and confidence intervals. The jackknife is computed
+    analytically, so it is fast even on larger corpora.
 -   **Clustering.** Pass `cluster_variable` to cluster the standard
     errors (e.g. by speaker), so repeated instances from the same unit
     are not treated as independent.
--   **Performance.** The jackknife is leave-one-out, so on large corpora
-    it can be slow; use `jackknife_fraction` to subsample, or
-    `parallel = TRUE` with a registered backend.
+-   **Multiple comparisons.** When testing many features at once
+    (e.g. in `get_nns_ratio()`), use `p.adjust.method` to control the
+    false-positive rate.
+-   **Validate.** A norm being “significant” is a statement about word
+    *usage*, not automatically about your substantive construct –
+    triangulate with nearest neighbours, nearest contexts, and domain
+    knowledge.
 
 # References
 
@@ -299,3 +341,6 @@ Regression: Models for Context-Specific Description and Inference.
 Khodak, M., Saunshi, N., Liang, Y., Ma, T., Stewart, B., and Arora, S.
 (2018). A La Carte Embedding: Cheap but Effective Induction of Semantic
 Feature Vectors. *ACL*.
+
+Arora, S., Liang, Y., and Ma, T. (2017). A Simple but Tough-to-Beat
+Baseline for Sentence Embeddings. *ICLR*.

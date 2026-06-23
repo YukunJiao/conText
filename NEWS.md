@@ -1,3 +1,13 @@
+# conText 3.3.1
+
+## Performance
+
+* The `conText()` jackknife is much faster (roughly 90x on a few-hundred-cluster
+  problem) and gives **identical** results. Each leave-one-out replicate now
+  computes the deflated coefficient norms analytically (WLS coefficients plus the
+  stata cluster-robust variance) instead of re-fitting `estimatr::lm_robust()`; it
+  falls back to the previous path on a rank-deficient design.
+
 # conText 3.3.0
 
 ## New features

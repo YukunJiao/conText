@@ -1,3 +1,13 @@
+# conText 3.3.5
+
+## Internal / housekeeping
+
+* Fixed the `BugReports` URL in DESCRIPTION (wrong capitalization `ConText`).
+* `bootstrap_contrast()`, `permute_contrast()` and `compute_contrast()` are no
+  longer exported -- they are internal helpers of `contrast_nns()`.
+* Added direct tests for previously-untested exported functions (`cos_sim()`,
+  `fem()`, `dem_sample()`, `feature_sim()`, `get_local_vocab()`, `get_nns()`).
+
 # conText 3.3.4
 
 ## Documentation

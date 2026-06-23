@@ -29,3 +29,4 @@ a list with three elements, nns for group 1, nns for group 2 and nns_ratio compa
 \description{
 Permute similarity and ratio computations
 }
+\keyword{internal}

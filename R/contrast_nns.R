@@ -212,7 +212,7 @@ contrast_nns <- function(x, groups = NULL, pre_trained = NULL, transform = TRUE,
 #' @param norm character = c("l2", "none") - set to 'l2' for cosine similarity and to 'none' for inner product (see ?sim2 in text2vec)
 #'
 #' @return a list with three elements, nns for group 1, nns for group 2 and nns_ratio comparing with ratios of similarities between the two groups
-#' @export
+#' @keywords internal
 #'
 # runs permutations
 permute_contrast <- function(target_embeddings1 = NULL, target_embeddings2 = NULL, pre_trained = NULL, candidates = NULL, norm = NULL){
@@ -249,7 +249,7 @@ permute_contrast <- function(target_embeddings1 = NULL, target_embeddings2 = NUL
 #' @param norm character = c("l2", "none") - set to 'l2' for cosine similarity and to 'none' for inner product (see ?sim2 in text2vec)
 #'
 #' @return a list with three elements, nns for group 1, nns for group 2 and nns_ratio comparing with ratios of similarities between the two groups
-#' @export
+#' @keywords internal
 #'
 # runs bootstraps
 bootstrap_contrast <- function(target_embeddings1 = NULL, target_embeddings2 = NULL, pre_trained = NULL, candidates = NULL, norm = NULL){
@@ -275,7 +275,7 @@ bootstrap_contrast <- function(target_embeddings1 = NULL, target_embeddings2 = N
 #' @param norm character = c("l2", "none") - set to 'l2' for cosine similarity and to 'none' for inner product (see ?sim2 in text2vec)
 #'
 #' @return a list with three elements, nns for group 1, nns for group 2 and nns_ratio comparing with ratios of similarities between the two groups
-#' @export
+#' @keywords internal
 #'
 # computes ratio of similarities
 compute_contrast <- function(target_embeddings1 = NULL, target_embeddings2 = NULL, pre_trained = NULL, candidates = NULL, norm = NULL){

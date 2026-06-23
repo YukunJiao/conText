@@ -1,3 +1,13 @@
+# conText 3.3.2
+
+## Bug fixes
+
+* The fast jackknife path (`deflated_norm_fast()`) now also falls back to the
+  `lm_robust` path on *near*-singular (ill-conditioned) designs, not only on
+  exactly rank-deficient ones, via a reciprocal-condition-number check on `X'WX`.
+  This guards the analytic (normal-equations) computation against precision loss,
+  so it only runs when it stays numerically exact.
+
 # conText 3.3.1
 
 ## Performance

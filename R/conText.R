@@ -366,7 +366,12 @@ deflated_norm_fast = function(Y, X, ids){
   if(n <= K) return(NULL)
   w <- 1/as.vector(table(ids)[ids])
   WX <- Xm * w
-  B <- tryCatch(solve(crossprod(Xm, WX)), error = function(e) NULL)
+  XtWX <- crossprod(Xm, WX)
+  # The analytic path uses the normal equations, which square the design's
+  # condition number; fall back to the (QR-based) lm_robust path when X'WX is
+  # ill-conditioned, so the fast path only runs when it stays numerically exact.
+  if(!is.finite(rcond(XtWX)) || rcond(XtWX) < 1e-8) return(NULL)
+  B <- tryCatch(solve(XtWX), error = function(e) NULL)
   if(is.null(B)) return(NULL)
   beta <- B %*% crossprod(WX, Y)        # WLS coefficients (K x D)
   resid <- Y - Xm %*% beta

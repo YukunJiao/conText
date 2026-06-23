@@ -15,6 +15,7 @@ contrast_nns(
   confidence_level = 0.95,
   permute = TRUE,
   num_permutations = 100,
+  p.adjust.method = "none",
   candidates = NULL,
   N = 20,
   verbose = TRUE
@@ -46,6 +47,11 @@ re-estimate cosine ratios for each sample. Required to get std. errors.}
 
 \item{num_permutations}{(numeric) - number of permutations to use}
 
+\item{p.adjust.method}{(character) method for adjusting the permutation p-values
+for multiple comparisons across the returned features, passed to
+\code{\link[stats:p.adjust]{stats::p.adjust()}} (e.g. \code{"BH"}, \code{"holm"}). Defaults to \code{"none"}; when not
+\code{"none"}, an additional \code{p.value.adjusted} column is returned.}
+
 \item{candidates}{(character) vector of candidate features for nearest neighbors}
 
 \item{N}{(numeric) - nearest neighbors are subset to the union of the N neighbors of each group (if NULL, ratio is computed for all features)}
@@ -62,6 +68,8 @@ a data.frame with following columns:
 \item{\code{lower.ci}}{(numeric) (if bootstrap = TRUE) lower bound of the confidence interval.}
 \item{\code{upper.ci}}{(numeric) (if bootstrap = TRUE) upper bound of the confidence interval.}
 \item{\code{p.value}}{(numeric) empirical p-value. Column is dropped if permute = FALSE.}
+\item{\code{p.value.adjusted}}{(numeric) multiple-comparison-adjusted p-value
+(only present if \code{permute = TRUE} and \code{p.adjust.method != "none"}).}
 }
 }
 \description{

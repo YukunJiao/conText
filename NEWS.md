@@ -1,3 +1,13 @@
+# conText 3.3.3
+
+## Bug fixes
+
+* The Quick Start vignette's illustrative PSOCK-cluster snippet
+  (`parallel::makePSOCKcluster(4)`) is now `eval = FALSE`. It was executed during
+  vignette build, which spawned 4 processes and failed `R CMD check` (and CRAN)
+  in environments that cap the number of cores. It is a how-to snippet, not meant
+  to run at build time.
+
 # conText 3.3.2
 
 ## Bug fixes

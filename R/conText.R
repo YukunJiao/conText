@@ -80,7 +80,7 @@
 #' model1@normed_coefficients
 #'
 
-conText <- function(formula, data, pre_trained, transform = TRUE, transform_matrix, jackknife=TRUE, confidence_level = 0.95, jackknife_fraction = 1, parallel=FALSE, permute = TRUE, num_permutations = 100, cluster_variable=NULL, window = 6L, valuetype = c("glob", "regex", "fixed"), case_insensitive = TRUE, hard_cut = FALSE, verbose = TRUE){
+conText <- function(formula, data, pre_trained, transform = TRUE, transform_matrix, jackknife=TRUE, confidence_level = 0.95, jackknife_fraction = 1, parallel=FALSE, permute = TRUE, num_permutations = 100, cluster_variable=NULL, window = 6L, valuetype = c("glob", "regex", "fixed"), case_insensitive = TRUE, hard_cut = FALSE, weighting = "uniform", sif_a = 1e-3, verbose = TRUE){
   # initial checks
 
   if(class(data)[1] != "tokens") stop("data must be of class tokens", call. = FALSE)
@@ -179,7 +179,7 @@ conText <- function(formula, data, pre_trained, transform = TRUE, transform_matr
   # create document-feature matrix
   toks_dfm <- quanteda::dfm(toks, tolower = FALSE)
   # embed toks to get dependent variable
-  toks_dem <- dem(x = toks_dfm, pre_trained = pre_trained, transform_matrix = transform_matrix, transform = transform, verbose = verbose)
+  toks_dem <- dem(x = toks_dfm, pre_trained = pre_trained, transform_matrix = transform_matrix, transform = transform, weighting = weighting, sif_a = sif_a, verbose = verbose)
   Y <- toks_dem
   if(verbose) cat('total observations included in regression:', nrow(Y), '\n')
   # regressors

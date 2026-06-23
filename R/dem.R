@@ -17,6 +17,12 @@
 #' if FALSE ouput untransformed averaged embeddings.
 #' @param transform_matrix (numeric) a D x D 'a la carte' transformation matrix.
 #' D = dimensions of pretrained embeddings.
+#' @param weighting (character) how to aggregate the context-feature embeddings:
+#' `"uniform"` (default) is the standard ALC average (each context word weighted by
+#' its count); `"sif"` applies smooth inverse-frequency weighting (Arora et al.
+#' 2017), downweighting each context feature `f` by `sif_a / (sif_a + p(f))` with
+#' `p(f)` its relative frequency in the contexts, before averaging.
+#' @param sif_a (numeric) the `a` constant for `weighting = "sif"` (default 1e-3).
 #' @param verbose (logical) - if TRUE, report the documents that had
 #' no overlapping features with the pretrained embeddings provided.
 #'
@@ -52,7 +58,9 @@
 #' # construct document-embedding-matrix
 #' immig_dem <- dem(immig_dfm, pre_trained = cr_glove_subset,
 #' transform = TRUE, transform_matrix = cr_transform, verbose = FALSE)
-dem <- function(x, pre_trained, transform = TRUE, transform_matrix, verbose = TRUE){
+dem <- function(x, pre_trained, transform = TRUE, transform_matrix, weighting = "uniform", sif_a = 1e-3, verbose = TRUE){
+
+  weighting <- match.arg(weighting, c("uniform", "sif"))
 
   # checks
   if(transform){
@@ -74,7 +82,17 @@ dem <- function(x, pre_trained, transform = TRUE, transform_matrix, verbose = TR
 
   # remove contexts with no context features in the pre-trained embeddings to avoid NaNs (i.e. dividing by 0)
   feature_matrix <- feature_matrix[N!=0,]
-  N <- Matrix::rowSums(feature_matrix)
+  N <- Matrix::rowSums(feature_matrix) # number of context words (sentence length), used to average
+
+  # optional SIF weighting (Arora et al. 2017): downweight each context feature by
+  # a/(a + p(f)), with p(f) its relative frequency in the contexts, before summing.
+  # N (above) is left as the unweighted word count so we still average by length.
+  if(weighting == "sif"){
+    pf <- Matrix::colSums(feature_matrix)
+    pf <- pf / sum(pf)
+    sif_w <- sif_a / (sif_a + pf)
+    feature_matrix <- feature_matrix %*% Matrix::Diagonal(x = as.numeric(sif_w))
+  }
 
   # context embeddings by instance
   #context_embedding <- Matrix::crossprod(t(as.matrix(feature_matrix)), pre_trained) # crossprod faster than %*%
